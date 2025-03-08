@@ -1,6 +1,4 @@
 import os
-import json
-import requests
 import pythonbible as bible
 from dotenv import load_dotenv
 import asyncio
