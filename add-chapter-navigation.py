@@ -1,17 +1,5 @@
 import os
-import pythonbible as bible
 from dotenv import load_dotenv
-import asyncio
-import aiohttp
-
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
@@ -85,13 +73,15 @@ bible_books = [
 ]
 
 PROD_DIRECTORY = "/Users/guppy57/GuppyBrain/References/Bible"
-DEV_DIRECTORY = "/test_bible"
+DEV_DIRECTORY = "./test_bible"
 
-def add_chapter_nav_to_bible(directory):
+def fix_my_oopsie(directory):
     for idx, (book, chapters, book_id, testament, skip_start, skip_end) in enumerate(bible_books, start=1):
         print(f"Currently working on {book}, {chapters}, {book_id}, {testament}")
 
         folder = f"{idx:02d}. {book}"
+        OT_GREEK = "Brenton Greek Septuagint"
+        NT_GREEK = "1904 Patriarchal Greek New Testament"
 
         for chapter in range(1, chapters + 1):
             filename = f"{book} {chapter}.md"
@@ -101,8 +91,6 @@ def add_chapter_nav_to_bible(directory):
             with open(file_path, "r") as file:
                 existing_text = file.read()
 
-            to_replace_top = "##### Berean Standard Bible"
-            to_replace_bottom = "##### 1904 Patriarchal Greek New Testament"
             previous = f"[[{book} {chapter - 1}|<- {book} {chapter - 1}]] | "
             next = f" | [[{book} {chapter + 1}|{book} {chapter + 1} ->]]"
             navigation = ""
@@ -113,20 +101,68 @@ def add_chapter_nav_to_bible(directory):
             if has_previous:
                 navigation += previous
 
-            navigation += f"[[{idx:02d}. Misc - {book}"
+            navigation += f"[[{idx:02d}. Misc - {book}|{book} Miscellanies]]"
 
             if has_next:
-                navigation += has_next
+                navigation += next
 
             html_navigation = f'<div class="bible-nav">{navigation}</div>'
 
-            existing_text.replace(to_replace_top, f"{html_navigation}\n---\n{to_replace_bottom}")
-            existing_text.replace(to_replace_bottom, f"---\n{html_navigation}\n{to_replace_bottom}")
+            replaced = existing_text
+
+            replaced = replaced.replace(html_navigation, f"{navigation}")
 
             with open(file_path, "w") as file:
-                file.write()
+                file.write(replaced)
 
             print(f"Finished working on {book} {chapter}")
 
 
-add_chapter_nav_to_bible(DEV_DIRECTORY)
+def add_chapter_nav_to_bible(directory):
+    for idx, (book, chapters, book_id, testament, skip_start, skip_end) in enumerate(bible_books, start=1):
+        print(f"Currently working on {book}, {chapters}, {book_id}, {testament}")
+
+        folder = f"{idx:02d}. {book}"
+        OT_GREEK = "Brenton Greek Septuagint"
+        NT_GREEK = "1904 Patriarchal Greek New Testament"
+
+        for chapter in range(1, chapters + 1):
+            filename = f"{book} {chapter}.md"
+            file_path = os.path.join(f"{directory}/{folder}", filename)
+            existing_text = ""
+
+            with open(file_path, "r") as file:
+                existing_text = file.read()
+
+            to_replace_top = "##### Berean Standard Bible"
+            to_replace_bottom = f"##### {OT_GREEK if testament == "OT" else NT_GREEK}"
+            previous = f"[[{book} {chapter - 1}|<- {book} {chapter - 1}]] | "
+            next = f" | [[{book} {chapter + 1}|{book} {chapter + 1} ->]]"
+            navigation = ""
+
+            has_previous = True if chapter > 1 else False
+            has_next = True if chapter < chapters else False
+
+            if has_previous:
+                navigation += previous
+
+            navigation += f"[[{idx:02d}. Misc - {book}|{book} Miscellanies]]"
+
+            if has_next:
+                navigation += next
+
+            html_navigation = f'<div class="bible-nav">{navigation}</div>'
+
+            replaced = existing_text
+
+            replaced = replaced.replace(to_replace_top, f"{html_navigation}\n\n---\n{to_replace_top}")
+            replaced = replaced.replace(to_replace_bottom, f"---\n{html_navigation}\n\n{to_replace_bottom}")
+
+            with open(file_path, "w") as file:
+                file.write(replaced)
+
+            print(f"Finished working on {book} {chapter}")
+
+
+# add_chapter_nav_to_bible(PROD_DIRECTORY)
+fix_my_oopsie(PROD_DIRECTORY)
