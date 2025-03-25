@@ -88,10 +88,10 @@ def make_request(path):
 
     try:
         with requests.get(url, headers={"api-key": key}) as response:
-            if response.status == 200:
+            if response.status_code == 200:
                 print("Found verse")
                 return response.json()
-            elif response.status == 404:
+            elif response.status_code == 404:
                 print("Verse missing")
                 return None
     except Exception as e:
@@ -116,25 +116,30 @@ def get_verse_text(verse_id):
 
 def get_book_id_and_chapter(book_chapter):
     components = book_chapter.split(" ")
-
     if len(components) == 2:
         return bible_dictionary.get(components[0]), components[1]
     elif len(components) == 3:
       return bible_dictionary.get(f"{components[0]} {components[1]}"), components[2]
 
 def get_subfolders(directory):
-    # Create a Path object
     path = Path(directory)
-
-    # Use list comprehension to get all subfolder names
     subfolders = [folder.name for folder in path.iterdir() if folder.is_dir()]
-
     return subfolders
 
 def convert_all_indexes(directory):
+    # Create the base output directory if it doesn't exist
+    output_dir = "./topics"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     subfolders = get_subfolders(directory=directory)
 
     for sf in subfolders:
+        # Create subfolder in output directory
+        sf_path = os.path.join(output_dir, sf)
+        if not os.path.exists(sf_path):
+            os.makedirs(sf_path)
+
         path = os.path.join(directory, sf)
         files = os.listdir(path)
 
@@ -146,41 +151,49 @@ def convert_all_indexes(directory):
                     if line.startswith("#"):
                         cleaned_line = line.replace("###### ", "")
                         split_line = cleaned_line.split(":")
-                        print(split_line)
 
                         book_chapter = split_line[0].strip()
+                        book_chapter = book_chapter.replace("Psalm", "Psalms")
                         verses = None
 
-                        book_id, chapter = get_book_id_and_chapter(book_chapter)
-
                         try:
-                          verses = split_line[1].strip()
-                        except:
-                          print(f"{book_chapter} has no verses, need full chapter")
+                          book_id, chapter = get_book_id_and_chapter(book_chapter)
 
-                        if verses == None:
-                          new_file_text = new_file_text + f"[[{book_chapter}]]"
-                        else:
-                          header = f"> [!bible]+ [[{book_chapter}]]{f":{verses}" if verses else ""} ({BIBLE_CODE})"
-                          new_file_text = new_file_text + header
+                          try:
+                            verses = split_line[1].strip()
+                          except:
+                            print(f"{book_chapter} has no verses, need full chapter")
 
-                          if "-" in verses:
-                              verses_split = verses.split("-")
-                              start = int(verses_split[0])
-                              end = int(verses_split[1])
-
-                              for i in range (start, end):
-                                  verse_id = f"{book_id}.{chapter}.{i}" 
-                                  text = get_verse_text(verse_id)
-                                  new_file_text = new_file_text + text
+                          if verses == None:
+                            new_file_text = new_file_text + f"[[{book_chapter}]]"
                           else:
-                              verse_id = f"{book_id}.{chapter}.{int(verses)}"
-                              text = get_verse_text(verse_id)
-                              new_file_text = new_file_text + text
+                            header = f"> [!bible]+ [[{book_chapter}]]{f":{verses}" if verses else ""} ({BIBLE_CODE})\n"
+                            new_file_text = new_file_text + header
+
+                            if "-" in verses:
+                                verses_split = verses.split("-")
+                                start = int(verses_split[0])
+                                end = int(verses_split[1])
+
+                                for i in range (start, end):
+                                    verse_id = f"{book_id}.{chapter}.{i}" 
+                                    text = get_verse_text(verse_id).replace("\n", " ")
+                                    text = text.replace("     ", " ")
+                                    new_file_text = new_file_text + text
+                            else:
+                                verse_id = f"{book_id}.{chapter}.{int(verses)}"
+                                text = get_verse_text(verse_id).replace("\n", " ")
+                                text = text.replace("     ", " ")
+                                new_file_text = new_file_text + text
+                        except Exception as e:
+                            print(f"Error: {e}")
+                            print(f"{sf_path}/{index}")
+                            print(f"Book chapter: {book_chapter}")
+                            print(f"Verses: {verses}")
 
                         new_file_text = new_file_text + "\n\n"
                 
-                new_file = open(os.path.join("./topics", sf, index), "w")
+                new_file = open(os.path.join(output_dir, sf, index), "w")
                 new_file.write(new_file_text)
                 new_file.close()
 
